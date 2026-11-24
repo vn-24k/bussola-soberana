@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: bussola-soberana-api
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    region: virginia
+    healthCheckPath: /api/health
+    envVars:
+      - key: SUPABASE_URL
+        value: https://hfgxsloyssxwfulyzftt.supabase.co
+      - key: SUPABASE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmZ3hzbG95c3N4d2Z1bHl6ZnR0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODY4NDM3OSwiZXhwIjoyMDk0MjYwMzc5fQ.bE9L_MwwJuqf45DJUYIuerVWTwdx7Gi6MUnl1XLn-EY
