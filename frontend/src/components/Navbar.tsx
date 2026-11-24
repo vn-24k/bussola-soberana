@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Compass, Flame, Volume2, VolumeX, ShieldCheck } from 'lucide-react';
+import { Compass, Flame, Volume2, VolumeX, ShieldCheck, Lock } from 'lucide-react';
 import { soundFX } from '../lib/sound-fx';
 
 interface NavbarProps {
@@ -7,13 +7,15 @@ interface NavbarProps {
   setActiveTab: (tab: string) => void;
   purezaStreak: number;
   sovereigntyScore: number;
+  onLock?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   purezaStreak,
-  sovereigntyScore
+  sovereigntyScore,
+  onLock
 }) => {
   const [muted, setMuted] = useState(false);
 
@@ -98,11 +100,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
+            {/* Botão de Trancar */}
+            {onLock && (
+              <button
+                onClick={onLock}
+                title="Bloquear Bússola"
+                className="p-2.5 rounded-xl bg-[#141821] border border-stone-800 text-stone-400 hover:text-rose-400 hover:border-rose-500/30 transition-all cursor-pointer"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Som Toggle */}
             <button
               onClick={toggleSound}
               title={muted ? 'Ativar feedback sonoro' : 'Silenciar feedback sonoro'}
-              className="p-2.5 rounded-xl bg-[#141821] border border-stone-800 text-stone-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all"
+              className="p-2.5 rounded-xl bg-[#141821] border border-stone-800 text-stone-400 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-all cursor-pointer"
             >
               {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -110,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         </div>
 
-        {/* Navegação Mobile (Bottom / Sub-bar) */}
+        {/* Navegação Mobile */}
         <div className="md:hidden flex items-center justify-around py-2 border-t border-stone-800/80 gap-1 overflow-x-auto">
           {navItems.map((item) => {
             const Icon = item.icon;

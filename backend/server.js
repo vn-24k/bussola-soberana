@@ -7,6 +7,16 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://hfgxsloyssxwfulyzftt.s
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmZ3hzbG95c3N4d2Z1bHl6ZnR0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODY4NDM3OSwiZXhwIjoyMDk0MjYwMzc5fQ.bE9L_MwwJuqf45DJUYIuerVWTwdx7Gi6MUnl1XLn-EY';
 
 const OBSIDIAN_VAULT_PATH = '/sdcard/Documents/Obsidian VN/VN/08 - Diário/2026';
+const SOVEREIGN_PIN = process.env.SOVEREIGN_PIN || "24816";
+
+function isAuthorized(req) {
+  const pinHeader = req.headers["x-sovereign-pin"];
+  const authHeader = req.headers["authorization"];
+  if (pinHeader === SOVEREIGN_PIN) return true;
+  if (authHeader && authHeader === `Bearer ${SOVEREIGN_PIN}`) return true;
+  return false;
+}
+
 
 // Headers comuns com CORS liberado
 const corsHeaders = {
@@ -210,7 +220,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 3. POST /api/check-in (Atualiza o check-in do dia)
-    if (pathname === '/api/check-in' && req.method === 'POST') {
+    if (pathname === '/api/check-in' && req.method === 'POST') {\n      if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
       let body = '';
       for await (const chunk of req) body += chunk;
       const payload = JSON.parse(body || '{}');
@@ -244,7 +254,7 @@ const server = http.createServer(async (req, res) => {
         const cbtRes = await supabaseFetch('cbt_entries?order=created_at.desc&limit=30');
         return sendJson(res, 200, cbtRes.data || []);
       }
-      if (req.method === 'POST') {
+      if (req.method === 'POST') {\n        if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
         let body = '';
         for await (const chunk of req) body += chunk;
         const entry = JSON.parse(body || '{}');
@@ -262,7 +272,7 @@ const server = http.createServer(async (req, res) => {
         const bookRes = await supabaseFetch('book_insights?order=created_at.desc&limit=30');
         return sendJson(res, 200, bookRes.data || []);
       }
-      if (req.method === 'POST') {
+      if (req.method === 'POST') {\n        if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
         let body = '';
         for await (const chunk of req) body += chunk;
         const entry = JSON.parse(body || '{}');
@@ -280,7 +290,7 @@ const server = http.createServer(async (req, res) => {
         const streakRes = await supabaseFetch('sovereign_streaks?id=eq.current&select=*');
         return sendJson(res, 200, (streakRes.data && streakRes.data[0]) || { pureza_streak_days: 7, consistency_streak_days: 7 });
       }
-      if (req.method === 'POST') {
+      if (req.method === 'POST') {\n        if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
         let body = '';
         for await (const chunk of req) body += chunk;
         const payload = JSON.parse(body || '{}');
@@ -305,7 +315,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 8. POST /api/sync/save-local (Salva diretamente no cofre se existir no ambiente)
-    if (pathname === '/api/sync/save-local' && req.method === 'POST') {
+    if (pathname === '/api/sync/save-local' && req.method === 'POST') {\n      if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
       const { dateStr } = getTodayInfo();
       const logRes = await supabaseFetch(`sovereign_daily_logs?date=eq.${dateStr}&select=*`);
       const log = (logRes.ok && logRes.data && logRes.data[0]) ? logRes.data[0] : { date: dateStr, day_of_week: 'Hoje' };

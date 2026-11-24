@@ -8,6 +8,8 @@ services:
     region: virginia
     healthCheckPath: /api/health
     envVars:
+      - key: SOVEREIGN_PIN
+        value: "24816"
       - key: SUPABASE_URL
         value: https://hfgxsloyssxwfulyzftt.supabase.co
       - key: SUPABASE_KEY

@@ -4,16 +4,38 @@ import { DailyCockpit } from './components/DailyCockpit';
 import { CBTWorkshop } from './components/CBTWorkshop';
 import { SanctuaryView } from './components/SanctuaryView';
 import { ObsidianBridge } from './components/ObsidianBridge';
-import { fetchTodayLog, saveCheckIn, fetchStreaks, DailyLog } from './lib/api';
+import { fetchTodayLog, saveCheckIn, fetchStreaks, DailyLog, getStoredPIN, setStoredPIN } from './lib/api';
+import { PinLockScreen } from './components/PinLockScreen';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('cockpit');
   const [log, setLog] = useState<DailyLog | null>(null);
   const [purezaStreak, setPurezaStreak] = useState(7);
   const [loading, setLoading] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  useEffect(() => {
+    const savedPin = getStoredPIN();
+    if (savedPin === '24816') {
+      setIsUnlocked(true);
+    }
+  }, []);
+
+  const handleUnlock = (enteredPin: string) => {
+    if (enteredPin === '24816') {
+      setStoredPIN('24816');
+      setIsUnlocked(true);
+    }
+  };
+
+  const handleLock = () => {
+    setStoredPIN('');
+    setIsUnlocked(false);
+  };
 
   // Carrega dados iniciais
   useEffect(() => {
+    if (!isUnlocked) return;
     async function init() {
       try {
         const [todayLog, streaks] = await Promise.all([
@@ -29,12 +51,12 @@ export default function App() {
       }
     }
     init();
-  }, []);
+  }, [isUnlocked]);
 
   const handleUpdate = async (updatedFields: Partial<DailyLog>) => {
     if (!log) return;
     const merged = { ...log, ...updatedFields };
-    setLog(merged); // Otimista
+    setLog(merged);
     try {
       const saved = await saveCheckIn(merged);
       setLog(saved);
@@ -46,12 +68,18 @@ export default function App() {
   const handleSyncObsidian = async () => {
     if (!log) return;
     try {
-      // Chama o backend ou gera a gravação
-      await fetch('http://localhost:3000/api/sync/save-local', { method: 'POST' }).catch(() => {});
+      await fetch('http://localhost:3000/api/sync/save-local', { 
+        method: 'POST',
+        headers: { 'x-sovereign-pin': '24816' }
+      }).catch(() => {});
     } catch {
       //
     }
   };
+
+  if (!isUnlocked) {
+    return <PinLockScreen onUnlock={handleUnlock} />;
+  }
 
   if (loading || !log) {
     return (
@@ -66,15 +94,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0B0D11] text-stone-200">
-      {/* Barra de Navegação */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         purezaStreak={purezaStreak}
         sovereigntyScore={log.sovereignty_score || 0}
+        onLock={handleLock}
       />
 
-      {/* Conteúdo Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
         {activeTab === 'cockpit' && (
           <DailyCockpit

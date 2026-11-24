@@ -110,12 +110,26 @@ export async function fetchTodayLog(): Promise<DailyLog> {
   };
 }
 
+export function getStoredPIN(): string {
+  return typeof window !== 'undefined' ? (localStorage.getItem('sovereign_pin') || '') : '';
+}
+
+export function setStoredPIN(pin: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('sovereign_pin', pin);
+  }
+}
+
 export async function saveCheckIn(data: Partial<DailyLog>): Promise<DailyLog> {
+  const pin = getStoredPIN();
   if (API_URL) {
     try {
       const res = await fetch(`${API_URL}/api/check-in`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-sovereign-pin': pin
+        },
         body: JSON.stringify(data)
       });
       if (res.ok) return await res.json();
