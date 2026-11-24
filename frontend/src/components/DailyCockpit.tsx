@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
 import { 
   Sun, Moon, Shield, Zap, Droplet, BookOpen, Dumbbell, BedDouble, 
-  CheckCircle2, Circle, Plus, Minus, Target, Sparkles, Save, Compass
+  CheckCircle2, Circle, Plus, Minus, Target, Sparkles, Save, Compass, Flame, ArrowUpRight
 } from 'lucide-react';
 import { DailyLog } from '../lib/api';
 import { soundFX } from '../lib/sound-fx';
+import { SovereignCompassDial } from './SovereignCompassDial';
 
 interface DailyCockpitProps {
   log: DailyLog;
   onUpdate: (updated: Partial<DailyLog>) => Promise<void>;
   onSyncObsidian: () => Promise<void>;
+  purezaStreak: number;
 }
 
 export const DailyCockpit: React.FC<DailyCockpitProps> = ({
   log,
   onUpdate,
-  onSyncObsidian
+  onSyncObsidian,
+  purezaStreak
 }) => {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -66,11 +69,34 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
     }
   };
 
+  // Contagem de hábitos cumpridos
+  const habitsList = [
+    Boolean(log.habito_oracao_manha),
+    Boolean(log.habito_oracao_noite),
+    Boolean(log.habito_pureza),
+    Boolean(log.habito_jejum),
+    Boolean(log.habito_agua || Number(log.water_liters) >= 2.0),
+    Boolean(log.habito_estudo || Number(log.study_minutes) >= 15),
+    Boolean(log.habito_exercicio),
+    Boolean(log.habito_sono),
+  ];
+  const habitsCompleted = habitsList.filter(Boolean).length;
+
   const habits = [
+    {
+      id: 'habito_pureza',
+      label: 'Pureza Mental Inviolável',
+      desc: '100% livre de pornografia e dopamina fácil. Foco no mundo real.',
+      icon: Shield,
+      color: 'text-[#D4AF37]',
+      active: log.habito_pureza,
+      badge: 'Pilar Inegociável',
+      hero: true
+    },
     {
       id: 'habito_oracao_manha',
       label: 'Oração da Manhã',
-      desc: 'Gratidão, intenção sagrada e sabedoria ao acordar',
+      desc: 'Gratidão, intenção sagrada e sabedoria antes de qualquer tela.',
       icon: Sun,
       color: 'text-amber-400',
       active: log.habito_oracao_manha,
@@ -78,32 +104,23 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
     {
       id: 'habito_oracao_noite',
       label: 'Oração da Noite',
-      desc: 'Paz, serenidade e entrega antes de dormir',
+      desc: 'Paz, serenidade e entrega espiritual antes de fechar os olhos.',
       icon: Moon,
       color: 'text-indigo-400',
       active: log.habito_oracao_noite,
     },
     {
-      id: 'habito_pureza',
-      label: 'Pureza Mental',
-      desc: '100% livre de pornografia e focado no mundo real',
-      icon: Shield,
-      color: 'text-[#D4AF37]',
-      active: log.habito_pureza,
-      badge: 'Pilar Inegociável',
-    },
-    {
       id: 'habito_jejum',
       label: 'Jejum & Autodomínio',
-      desc: 'Fortalecimento do espírito e controle da mente',
+      desc: 'Fortalecimento do espírito: o corpo obedece à mente, e não o contrário.',
       icon: Zap,
       color: 'text-yellow-400',
       active: log.habito_jejum,
     },
     {
       id: 'habito_exercicio',
-      label: 'Corpo & Treino',
-      desc: '20 minutos de caminhada, natação ou exercício',
+      label: 'Corpo de Guerreiro',
+      desc: 'Treino físico, natação ou caminhada. O corpo é o templo da alma.',
       icon: Dumbbell,
       color: 'text-emerald-400',
       active: log.habito_exercicio,
@@ -111,7 +128,7 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
     {
       id: 'habito_sono',
       label: 'Sono & Desconexão',
-      desc: 'Desconectar de telas antes de deitar',
+      desc: 'Desligar telas antes de deitar. Recuperação biológica profunda.',
       icon: BedDouble,
       color: 'text-blue-400',
       active: log.habito_sono,
@@ -121,67 +138,71 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
   const moods = ['Focado', 'Sereno', 'Combate', 'Reflexivo', 'Cansado'];
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-10 pb-20 relative z-10">
       
-      {/* Banner Principal com Data e Princípio */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#161B26] via-[#10131A] to-[#0A0C10] border border-[#D4AF37]/25 shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#D4AF37]/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#D4AF37] font-semibold mb-2">
-              <Compass className="w-4 h-4" />
-              <span>{log.day_of_week} • {log.date}</span>
-            </div>
-            <h1 className="font-serif-noble text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-wide">
-              Cockpit da Bússola Inabalável
+      {/* 1. Mostrador Central da Bússola Soberana (O Coração da Aplicação) */}
+      <div className="card-soberano p-6 sm:p-10 relative overflow-hidden text-center">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-stone-800/80 pb-6 mb-2">
+          <div className="text-left">
+            <span className="text-[11px] font-serif-noble font-bold tracking-widest text-[#D4AF37] uppercase">
+              {log.day_of_week} • {log.date}
+            </span>
+            <h1 className="font-serif-noble text-2xl sm:text-3xl font-extrabold text-white tracking-wide mt-1">
+              Bússola Inabalável
             </h1>
-            <p className="mt-2 text-sm text-stone-300 max-w-2xl leading-relaxed italic">
-              "Quando a motivação acaba, o princípio sustenta. Não sou fruto das circunstâncias; sou fruto das minhas decisões inegociáveis."
+            <p className="text-xs text-stone-300 italic mt-0.5 max-w-xl">
+              "Não sou fruto das circunstâncias; sou fruto das minhas decisões inegociáveis."
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <button
-              onClick={handleSaveAll}
-              disabled={saving}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-amber-600 text-black font-extrabold text-sm tracking-wide shadow-lg shadow-[#D4AF37]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Gravando...' : saveSuccess ? 'Sincronizado!' : 'Salvar & Sincronizar'}
-            </button>
-          </div>
+          <button
+            onClick={handleSaveAll}
+            disabled={saving}
+            className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#D4AF37] via-amber-500 to-[#B38728] text-black font-extrabold text-xs tracking-wider uppercase shadow-[0_0_25px_rgba(212,175,55,0.35)] hover:scale-[1.03] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Gravando...' : saveSuccess ? 'Sincronizado!' : 'Salvar no Obsidian'}
+          </button>
         </div>
 
+        {/* Mostrador Físico Rotativo */}
+        <SovereignCompassDial
+          score={log.sovereignty_score || 0}
+          purezaStreak={purezaStreak}
+          habitsCompleted={habitsCompleted}
+          totalHabits={8}
+        />
+
         {/* Nível de Energia & Humor Rápido */}
-        <div className="mt-6 pt-6 border-t border-stone-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="mt-4 pt-6 border-t border-stone-800/80 grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-400 mb-2 font-medium">
-              Nível de Energia: <span className="text-[#D4AF37] font-bold text-sm">{log.energy_level || 8}/10</span>
-            </label>
+            <div className="flex items-center justify-between text-xs uppercase tracking-wider text-stone-400 mb-2 font-medium">
+              <span>Nível de Energia</span>
+              <span className="text-[#D4AF37] font-bold text-sm">{log.energy_level || 8}/10</span>
+            </div>
             <input
               type="range"
               min="1"
               max="10"
               value={log.energy_level || 8}
               onChange={(e) => onUpdate({ energy_level: Number(e.target.value) })}
-              className="w-full h-2 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-[#D4AF37]"
+              className="w-full h-2.5 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-[#D4AF37]"
             />
           </div>
 
           <div>
-            <label className="block text-xs uppercase tracking-wider text-stone-400 mb-2 font-medium">
-              Estado de Espírito / Humor:
-            </label>
+            <span className="block text-xs uppercase tracking-wider text-stone-400 mb-2 font-medium">
+              Estado de Espírito
+            </span>
             <div className="flex flex-wrap gap-1.5">
               {moods.map((m) => (
                 <button
                   key={m}
                   onClick={() => { soundFX.playClick(); onUpdate({ mood: m }); }}
-                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     log.mood === m
-                      ? 'bg-[#D4AF37] text-black font-bold'
-                      : 'bg-[#181C26] text-stone-300 hover:bg-stone-800 border border-stone-800'
+                      ? 'bg-[#D4AF37] text-black font-bold shadow-md shadow-[#D4AF37]/20'
+                      : 'bg-[#121620] text-stone-300 hover:bg-stone-800 border border-stone-800'
                   }`}
                 >
                   {m}
@@ -192,51 +213,193 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
         </div>
       </div>
 
-      {/* Grid dos 8 Hábitos Inegociáveis (Bento Grid) */}
+      {/* 2. Os 8 Hábitos de Ferro (Bento Grid) */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#D4AF37]" />
-            <h2 className="font-serif-noble text-xl font-bold text-white tracking-wide">Os 8 Hábitos de Ferro</h2>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37]">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-serif-noble text-xl font-bold text-white tracking-wide">
+                Os 8 Pilares de Ferro
+              </h2>
+              <p className="text-xs text-stone-400">Rituais diários que sustentam a soberania</p>
+            </div>
           </div>
-          <span className="text-xs text-stone-400">Marque ao cumprir cada ritual</span>
+          <span className="text-xs font-serif-noble text-[#D4AF37] font-bold">{habitsCompleted}/8 Concluídos</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
-          {/* Hábitos de Toque Simples */}
-          {habits.map((h) => {
+          {/* Card Especial: Pureza Mental (Destaque Principal) */}
+          <div
+            onClick={() => toggleHabit('habito_pureza')}
+            className={`card-soberano p-6 cursor-pointer relative overflow-hidden group select-none md:col-span-2 lg:col-span-1 ${
+              log.habito_pureza ? 'card-cumprido' : ''
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3.5">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${
+                  log.habito_pureza
+                    ? 'bg-[#D4AF37]/25 border-[#D4AF37] text-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.4)]'
+                    : 'bg-[#121620] border-stone-800 text-stone-400'
+                }`}>
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-stone-100">Pureza Mental</h3>
+                    <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                      Inegociável
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-400 mt-1 leading-snug">
+                    100% livre de pornografia e dopamina barata.
+                  </p>
+                </div>
+              </div>
+
+              {log.habito_pureza ? (
+                <CheckCircle2 className="w-6 h-6 text-[#D4AF37] shrink-0" />
+              ) : (
+                <Circle className="w-6 h-6 text-stone-600 group-hover:text-stone-400 shrink-0 transition-colors" />
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-stone-800/80 flex items-center justify-between text-[11px] text-stone-400">
+              <span>Blindagem Ativa</span>
+              <span className="text-amber-300 font-bold">{purezaStreak} dias consecutivos</span>
+            </div>
+          </div>
+
+          {/* Card Especial: Água da Represa (Meta 2L com Nível Visual) */}
+          <div className={`card-soberano p-6 relative overflow-hidden select-none ${
+            (log.water_liters || 0) >= 2.0 ? 'card-cumprido' : ''
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-sky-950/40 border border-sky-500/40 flex items-center justify-center text-sky-400">
+                  <Droplet className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-stone-100 flex items-center gap-2">
+                    Água da Represa
+                    <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30">
+                      Meta 2.0L
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-400">Pacto de pureza e hidratação</p>
+                </div>
+              </div>
+              <span className="font-serif-noble text-xl font-black text-sky-300">{log.water_liters || 0}L</span>
+            </div>
+
+            {/* Barra de Água */}
+            <div className="w-full bg-stone-900 rounded-full h-2 mb-4 overflow-hidden border border-stone-800">
+              <div 
+                className="bg-gradient-to-r from-sky-500 via-cyan-400 to-sky-300 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_#38BDF8]"
+                style={{ width: `${Math.min(100, ((log.water_liters || 0) / 2.0) * 100)}%` }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleWaterChange(-0.25)}
+                className="flex-1 py-1.5 rounded-xl bg-[#121620] hover:bg-stone-800 border border-stone-800 text-stone-300 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Minus className="w-3.5 h-3.5" /> -250ml
+              </button>
+              <button
+                onClick={() => handleWaterChange(0.25)}
+                className="flex-1 py-1.5 rounded-xl bg-sky-950/50 hover:bg-sky-900/60 border border-sky-700/50 text-sky-200 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> +250ml
+              </button>
+              <button
+                onClick={() => handleWaterChange(0.5)}
+                className="flex-1 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black text-xs font-bold flex items-center justify-center gap-1 cursor-pointer shadow-md shadow-sky-500/30"
+              >
+                <Plus className="w-3.5 h-3.5" /> +500ml
+              </button>
+            </div>
+          </div>
+
+          {/* Card Especial: Estudo & Conhecimento (Meta 15m) */}
+          <div className={`card-soberano p-6 relative overflow-hidden select-none ${
+            (log.study_minutes || 0) >= 15 ? 'card-cumprido' : ''
+          }`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-stone-100 flex items-center gap-2">
+                    Estudo & Código
+                    <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                      Meta 15m
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-400">Leitura, TCC ou engenharia</p>
+                </div>
+              </div>
+              <span className="font-serif-noble text-xl font-black text-amber-300">{log.study_minutes || 0}m</span>
+            </div>
+
+            {/* Barra de Estudo */}
+            <div className="w-full bg-stone-900 rounded-full h-2 mb-4 overflow-hidden border border-stone-800">
+              <div 
+                className="bg-gradient-to-r from-amber-500 to-yellow-300 h-2 rounded-full transition-all duration-300 shadow-[0_0_10px_#F59E0B]"
+                style={{ width: `${Math.min(100, ((log.study_minutes || 0) / 15) * 100)}%` }}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleStudyChange(-5)}
+                className="flex-1 py-1.5 rounded-xl bg-[#121620] hover:bg-stone-800 border border-stone-800 text-stone-300 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Minus className="w-3.5 h-3.5" /> -5m
+              </button>
+              <button
+                onClick={() => handleStudyChange(5)}
+                className="flex-1 py-1.5 rounded-xl bg-amber-950/50 hover:bg-amber-900/60 border border-amber-700/50 text-amber-200 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> +5m
+              </button>
+              <button
+                onClick={() => handleStudyChange(15)}
+                className="flex-1 py-1.5 rounded-xl bg-[#D4AF37] hover:bg-amber-400 text-black text-xs font-bold flex items-center justify-center gap-1 cursor-pointer shadow-md shadow-[#D4AF37]/30"
+              >
+                <Plus className="w-3.5 h-3.5" /> +15m
+              </button>
+            </div>
+          </div>
+
+          {/* Demais Hábitos de Toque Direto */}
+          {habits.filter(h => h.id !== 'habito_pureza').map((h) => {
             const Icon = h.icon;
             return (
               <div
                 key={h.id}
                 onClick={() => toggleHabit(h.id as keyof DailyLog)}
-                className={`card-soberano p-5 cursor-pointer relative overflow-hidden group select-none ${
-                  h.active ? 'border-[#D4AF37]/50 bg-[#161C26]/90 shadow-md shadow-[#D4AF37]/10' : ''
+                className={`card-soberano p-6 cursor-pointer relative overflow-hidden group select-none ${
+                  h.active ? 'card-cumprido' : ''
                 }`}
               >
-                {h.active && (
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AF37]/10 rounded-full blur-xl -mr-6 -mt-6 pointer-events-none" />
-                )}
-
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all ${
+                  <div className="flex items-center gap-3.5">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${
                       h.active 
-                        ? 'bg-[#D4AF37]/20 border-[#D4AF37]/60 text-[#D4AF37]' 
-                        : 'bg-[#141821] border-stone-800 text-stone-400 group-hover:border-stone-700'
+                        ? 'bg-[#D4AF37]/25 border-[#D4AF37] text-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.3)]' 
+                        : 'bg-[#121620] border-stone-800 text-stone-400 group-hover:border-stone-700'
                     }`}>
-                      <Icon className="w-5 h-5" />
+                      <Icon className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-stone-100 flex items-center gap-2">
-                        {h.label}
-                        {h.badge && (
-                          <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                            {h.badge}
-                          </span>
-                        )}
-                      </h3>
+                      <h3 className="font-bold text-sm text-stone-100">{h.label}</h3>
                       <p className="text-xs text-stone-400 mt-0.5 leading-snug">{h.desc}</p>
                     </div>
                   </div>
@@ -253,116 +416,10 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
             );
           })}
 
-          {/* Card Interativo: Água 2L (Pacto com a Água) */}
-          <div className={`card-soberano p-5 relative overflow-hidden ${
-            (log.water_liters || 0) >= 2.0 ? 'border-sky-500/50 bg-[#101B2B]/90' : ''
-          }`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-sky-950/40 border border-sky-500/40 flex items-center justify-center text-sky-400">
-                  <Droplet className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-stone-100 flex items-center gap-2">
-                    Água da Represa
-                    <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30">
-                      Meta: 2.0L
-                    </span>
-                  </h3>
-                  <p className="text-xs text-stone-400">Hidratação e limpeza celular</p>
-                </div>
-              </div>
-              <span className="text-lg font-extrabold text-sky-300">{log.water_liters || 0}L</span>
-            </div>
-
-            {/* Barra de Progresso de Água */}
-            <div className="w-full bg-stone-800/80 rounded-full h-2 mb-4 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-sky-500 to-cyan-400 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(100, ((log.water_liters || 0) / 2.0) * 100)}%` }}
-              />
-            </div>
-
-            {/* Controles de Água */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleWaterChange(-0.25)}
-                className="flex-1 py-1.5 rounded-xl bg-[#141821] hover:bg-stone-800 border border-stone-800 text-stone-300 text-xs font-semibold flex items-center justify-center gap-1"
-              >
-                <Minus className="w-3.5 h-3.5" /> -250ml
-              </button>
-              <button
-                onClick={() => handleWaterChange(0.25)}
-                className="flex-1 py-1.5 rounded-xl bg-sky-900/40 hover:bg-sky-800/50 border border-sky-700/50 text-sky-200 text-xs font-semibold flex items-center justify-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> +250ml
-              </button>
-              <button
-                onClick={() => handleWaterChange(0.5)}
-                className="flex-1 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-black text-xs font-bold flex items-center justify-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> +500ml
-              </button>
-            </div>
-          </div>
-
-          {/* Card Interativo: Estudo 15min */}
-          <div className={`card-soberano p-5 relative overflow-hidden ${
-            (log.study_minutes || 0) >= 15 ? 'border-amber-500/50 bg-[#1E1912]/90' : ''
-          }`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-stone-100 flex items-center gap-2">
-                    Estudo & Conhecimento
-                    <span className="text-[9px] uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                      Meta: 15m
-                    </span>
-                  </h3>
-                  <p className="text-xs text-stone-400">Leitura, TCC ou engenharia</p>
-                </div>
-              </div>
-              <span className="text-lg font-extrabold text-amber-300">{log.study_minutes || 0} min</span>
-            </div>
-
-            {/* Barra de Progresso de Estudo */}
-            <div className="w-full bg-stone-800/80 rounded-full h-2 mb-4 overflow-hidden">
-              <div 
-                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(100, ((log.study_minutes || 0) / 15) * 100)}%` }}
-              />
-            </div>
-
-            {/* Controles de Estudo */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleStudyChange(-5)}
-                className="flex-1 py-1.5 rounded-xl bg-[#141821] hover:bg-stone-800 border border-stone-800 text-stone-300 text-xs font-semibold flex items-center justify-center gap-1"
-              >
-                <Minus className="w-3.5 h-3.5" /> -5m
-              </button>
-              <button
-                onClick={() => handleStudyChange(5)}
-                className="flex-1 py-1.5 rounded-xl bg-amber-900/40 hover:bg-amber-800/50 border border-amber-700/50 text-amber-200 text-xs font-semibold flex items-center justify-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> +5m
-              </button>
-              <button
-                onClick={() => handleStudyChange(15)}
-                className="flex-1 py-1.5 rounded-xl bg-[#D4AF37] hover:bg-amber-400 text-black text-xs font-bold flex items-center justify-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" /> +15m
-              </button>
-            </div>
-          </div>
-
         </div>
       </div>
 
-      {/* 3 Prioridades Inegociáveis do Dia */}
+      {/* 3. As 3 Prioridades Inegociáveis (A Forja do Dia) */}
       <div className="card-soberano p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37]">
@@ -370,9 +427,9 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
           </div>
           <div>
             <h2 className="font-serif-noble text-lg sm:text-xl font-bold text-white tracking-wide">
-              3 Prioridades Inegociáveis de Hoje
+              3 Prioridades Inegociáveis
             </h2>
-            <p className="text-xs text-stone-400">Se você cumprir apenas estas três, o seu dia foi vitorioso</p>
+            <p className="text-xs text-stone-400">O que define a vitória do seu dia hoje</p>
           </div>
         </div>
 
@@ -386,9 +443,9 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
             return (
               <div
                 key={num}
-                className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${
+                className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${
                   isDone 
-                    ? 'bg-amber-950/20 border-[#D4AF37]/40 text-stone-300' 
+                    ? 'bg-[#161D29]/80 border-[#D4AF37]/50 text-stone-300' 
                     : 'bg-[#10131A] border-stone-800 text-white'
                 }`}
               >
@@ -397,7 +454,7 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
                     soundFX.playToggle(!isDone);
                     onUpdate({ [doneKey]: !isDone });
                   }}
-                  className="p-1 text-[#D4AF37] hover:scale-110 transition-transform"
+                  className="p-1 text-[#D4AF37] hover:scale-110 transition-transform cursor-pointer"
                 >
                   {isDone ? (
                     <CheckCircle2 className="w-6 h-6 text-[#D4AF37]" />
@@ -406,7 +463,7 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
                   )}
                 </button>
 
-                <span className="font-serif-noble font-bold text-[#D4AF37] text-sm w-5">{num}.</span>
+                <span className="font-serif-noble font-black text-[#D4AF37] text-base w-6">{num}.</span>
 
                 <input
                   type="text"
@@ -414,7 +471,7 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
                   placeholder={`Definir prioridade ${num}...`}
                   onChange={(e) => onUpdate({ [textKey]: e.target.value })}
                   className={`w-full bg-transparent border-0 text-sm focus:ring-0 focus:outline-none ${
-                    isDone ? 'line-through text-stone-400' : 'text-stone-100'
+                    isDone ? 'line-through text-stone-400' : 'text-stone-100 font-medium'
                   }`}
                 />
               </div>
@@ -423,10 +480,10 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
         </div>
       </div>
 
-      {/* Bloco de Reflexão Noturna & Atividades */}
+      {/* 4. Atividades & Revisão Noturna */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="card-soberano p-6">
-          <h3 className="font-serif-noble font-bold text-base text-stone-200 mb-2">
+          <h3 className="font-serif-noble font-bold text-base text-stone-200 mb-1">
             📋 Registro de Atividades do Dia
           </h3>
           <p className="text-xs text-stone-400 mb-3">O que você construiu, resolveu ou avançou hoje</p>
@@ -435,12 +492,12 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
             value={log.activity_notes || ''}
             onChange={(e) => onUpdate({ activity_notes: e.target.value })}
             placeholder="Ex: Treinei pernas, avancei no código do backend, organizei as contas..."
-            className="w-full bg-[#10131A] border border-stone-800 rounded-2xl p-4 text-sm text-stone-200 focus:outline-none focus:border-[#D4AF37]/50 resize-none"
+            className="w-full bg-[#0D1016] border border-stone-800 rounded-2xl p-4 text-sm text-stone-200 focus:outline-none focus:border-[#D4AF37]/50 resize-none"
           />
         </div>
 
         <div className="card-soberano p-6">
-          <h3 className="font-serif-noble font-bold text-base text-stone-200 mb-2">
+          <h3 className="font-serif-noble font-bold text-base text-stone-200 mb-1">
             🔍 Revisão Noturna & Gratidão
           </h3>
           <p className="text-xs text-stone-400 mb-3">Pelo que sou grato hoje? Como posso ser 1% melhor amanhã?</p>
@@ -449,7 +506,7 @@ export const DailyCockpit: React.FC<DailyCockpitProps> = ({
             value={log.evening_review || ''}
             onChange={(e) => onUpdate({ evening_review: e.target.value })}
             placeholder="Ex: Grato pelo prato de comida quente, pelo aprendizado, mente serena antes de dormir..."
-            className="w-full bg-[#10131A] border border-stone-800 rounded-2xl p-4 text-sm text-stone-200 focus:outline-none focus:border-[#D4AF37]/50 resize-none"
+            className="w-full bg-[#0D1016] border border-stone-800 rounded-2xl p-4 text-sm text-stone-200 focus:outline-none focus:border-[#D4AF37]/50 resize-none"
           />
         </div>
       </div>
