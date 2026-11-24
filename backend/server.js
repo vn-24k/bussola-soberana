@@ -5,24 +5,22 @@ import path from 'node:path';
 const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://hfgxsloyssxwfulyzftt.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmZ3hzbG95c3N4d2Z1bHl6ZnR0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODY4NDM3OSwiZXhwIjoyMDk0MjYwMzc5fQ.bE9L_MwwJuqf45DJUYIuerVWTwdx7Gi6MUnl1XLn-EY';
-
 const OBSIDIAN_VAULT_PATH = '/sdcard/Documents/Obsidian VN/VN/08 - Diário/2026';
-const SOVEREIGN_PIN = process.env.SOVEREIGN_PIN || "24816";
+const SOVEREIGN_PIN = process.env.SOVEREIGN_PIN || '24816';
 
 function isAuthorized(req) {
-  const pinHeader = req.headers["x-sovereign-pin"];
-  const authHeader = req.headers["authorization"];
+  const pinHeader = req.headers['x-sovereign-pin'];
+  const authHeader = req.headers['authorization'];
   if (pinHeader === SOVEREIGN_PIN) return true;
   if (authHeader && authHeader === `Bearer ${SOVEREIGN_PIN}`) return true;
   return false;
 }
 
-
 // Headers comuns com CORS liberado
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key, x-sovereign-pin',
 };
 
 function sendJson(res, statusCode, data) {
@@ -70,7 +68,6 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 
 function getTodayInfo() {
   const now = new Date();
-  // Formato YYYY-MM-DD
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
@@ -82,17 +79,15 @@ function getTodayInfo() {
 // Calcula o Índice de Soberania (0 a 100)
 function calculateScore(log) {
   let score = 0;
-  // 8 Hábitos fundamentais (cada um vale 10 pontos = 80 pontos)
   if (log.habito_oracao_manha) score += 10;
   if (log.habito_oracao_noite) score += 10;
-  if (log.habito_pureza) score += 15; // peso maior para pilar inegociável
+  if (log.habito_pureza) score += 15;
   if (log.habito_jejum) score += 10;
   if (log.habito_agua || (Number(log.water_liters) >= 2.0)) score += 10;
   if (log.habito_estudo || (Number(log.study_minutes) >= 15)) score += 10;
   if (log.habito_exercicio) score += 10;
   if (log.habito_sono) score += 5;
 
-  // 3 Prioridades (cada uma concluída vale 5 pontos = 15 pontos)
   if (log.priority_1_done) score += 5;
   if (log.priority_2_done) score += 5;
   if (log.priority_3_done) score += 5;
@@ -189,11 +184,12 @@ const server = http.createServer(async (req, res) => {
         status: 'online',
         service: 'Bússola Soberana Cloud Core',
         environment: 'Render 24/7',
+        secured: true,
         time: new Date().toISOString()
       });
     }
 
-    // 2. GET /api/today (Busca ou cria o dia atual)
+    // 2. GET /api/today
     if (pathname === '/api/today' && req.method === 'GET') {
       const { dateStr, dayOfWeek } = getTodayInfo();
       const queryRes = await supabaseFetch(`sovereign_daily_logs?date=eq.${dateStr}&select=*`);
@@ -202,7 +198,6 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, queryRes.data[0]);
       }
 
-      // Se não existe, cria o dia de hoje
       const newEntry = {
         date: dateStr,
         day_of_week: dayOfWeek,
@@ -219,8 +214,12 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 201, insertRes.data ? insertRes.data[0] : newEntry);
     }
 
-    // 3. POST /api/check-in (Atualiza o check-in do dia)
-    if (pathname === '/api/check-in' && req.method === 'POST') {\n      if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
+    // 3. POST /api/check-in (BLINDADO COM PIN)
+    if (pathname === '/api/check-in' && req.method === 'POST') {
+      if (!isAuthorized(req)) {
+        return sendJson(res, 401, { error: 'Chave de Soberania Inválida. Acesso Negado.' });
+      }
+
       let body = '';
       for await (const chunk of req) body += chunk;
       const payload = JSON.parse(body || '{}');
@@ -228,7 +227,6 @@ const server = http.createServer(async (req, res) => {
       const { dateStr, dayOfWeek } = getTodayInfo();
       const targetDate = payload.date || dateStr;
 
-      // Busca dados atuais
       const currentRes = await supabaseFetch(`sovereign_daily_logs?date=eq.${targetDate}&select=*`);
       let currentLog = (currentRes.ok && currentRes.data && currentRes.data[0]) ? currentRes.data[0] : { date: targetDate, day_of_week: dayOfWeek };
 
@@ -248,13 +246,16 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, updateRes.data ? updateRes.data[0] : merged);
     }
 
-    // 4. CBT (TCC) Endpoints
+    // 4. CBT Endpoints (BLINDADO COM PIN)
     if (pathname === '/api/cbt') {
       if (req.method === 'GET') {
         const cbtRes = await supabaseFetch('cbt_entries?order=created_at.desc&limit=30');
         return sendJson(res, 200, cbtRes.data || []);
       }
-      if (req.method === 'POST') {\n        if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
+      if (req.method === 'POST') {
+        if (!isAuthorized(req)) {
+          return sendJson(res, 401, { error: 'Chave de Soberania Inválida. Acesso Negado.' });
+        }
         let body = '';
         for await (const chunk of req) body += chunk;
         const entry = JSON.parse(body || '{}');
@@ -266,13 +267,16 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // 5. Book Insights Endpoints
+    // 5. Book Insights Endpoints (BLINDADO COM PIN)
     if (pathname === '/api/book-insights') {
       if (req.method === 'GET') {
         const bookRes = await supabaseFetch('book_insights?order=created_at.desc&limit=30');
         return sendJson(res, 200, bookRes.data || []);
       }
-      if (req.method === 'POST') {\n        if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
+      if (req.method === 'POST') {
+        if (!isAuthorized(req)) {
+          return sendJson(res, 401, { error: 'Chave de Soberania Inválida. Acesso Negado.' });
+        }
         let body = '';
         for await (const chunk of req) body += chunk;
         const entry = JSON.parse(body || '{}');
@@ -290,7 +294,10 @@ const server = http.createServer(async (req, res) => {
         const streakRes = await supabaseFetch('sovereign_streaks?id=eq.current&select=*');
         return sendJson(res, 200, (streakRes.data && streakRes.data[0]) || { pureza_streak_days: 7, consistency_streak_days: 7 });
       }
-      if (req.method === 'POST') {\n        if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
+      if (req.method === 'POST') {
+        if (!isAuthorized(req)) {
+          return sendJson(res, 401, { error: 'Chave de Soberania Inválida. Acesso Negado.' });
+        }
         let body = '';
         for await (const chunk of req) body += chunk;
         const payload = JSON.parse(body || '{}');
@@ -302,7 +309,7 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    // 7. GET /api/export-markdown (Retorna o arquivo .md)
+    // 7. GET /api/export-markdown
     if (pathname === '/api/export-markdown' && req.method === 'GET') {
       const { dateStr } = getTodayInfo();
       const targetDate = parsedUrl.searchParams.get('date') || dateStr;
@@ -314,8 +321,11 @@ const server = http.createServer(async (req, res) => {
       return sendText(res, 200, markdown, 'text/markdown; charset=utf-8');
     }
 
-    // 8. POST /api/sync/save-local (Salva diretamente no cofre se existir no ambiente)
-    if (pathname === '/api/sync/save-local' && req.method === 'POST') {\n      if (!isAuthorized(req)) return sendJson(res, 401, { error: 'Chave de Soberania Invalida' });
+    // 8. POST /api/sync/save-local (BLINDADO COM PIN)
+    if (pathname === '/api/sync/save-local' && req.method === 'POST') {
+      if (!isAuthorized(req)) {
+        return sendJson(res, 401, { error: 'Chave de Soberania Inválida. Acesso Negado.' });
+      }
       const { dateStr } = getTodayInfo();
       const logRes = await supabaseFetch(`sovereign_daily_logs?date=eq.${dateStr}&select=*`);
       const log = (logRes.ok && logRes.data && logRes.data[0]) ? logRes.data[0] : { date: dateStr, day_of_week: 'Hoje' };
@@ -351,5 +361,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🧭 Bússola Soberana Backend ativo na porta ${PORT}`);
+  console.log(`🧭 Bússola Soberana Backend ativo na porta ${PORT} [Protegido por PIN]`);
 });
